@@ -1,22 +1,53 @@
-$domainName = "test.local"
-$password = "TestPassword"
-$user = "Administrator"
-$credential = New-Object System.Management.Automation.PSCredential($user, (ConvertTo-SecureString $password -AsPlainText -Force))
-$timeout = New-TimeSpan -Minutes 5
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+---
+description: "Find tagged EC2 instances and wait for them to be running."
+schemaVersion: "0.3"
+mainSteps:
+  - name: "findInstances"
+    action: "aws:executeScript"
+    inputs:
+      Runtime: "python3.11"
+      Handler: "script_handler"
+      Script: |
+        import boto3
 
-while ($stopwatch.Elapsed -lt $timeout) {
-    try {
-        Add-Computer -DomainName $domainName -Credential $credential -ErrorAction Stop
-        Write-Host "Successfully joined the domain '$domainName'. A restart is required to apply changes."
-        break
-    }
-    catch {
-        Write-Warning "Failed to join domain. Error: $($_.Exception.Message). Retrying in 10 seconds..."
-        Start-Sleep -Seconds 10
-    }
-}
+        def script_handler(events, context):
+            ec2 = boto3.client('ec2')
+            
+            response = ec2.describe_instances(
+                Filters=[
+                    {
+                        'Name': 'tag:BuildProfile',
+                        'Values': ['DomainController']
+                    },
+                    {
+                        'Name': 'tag:Scenario',
+                        'Values': ['test']
+                    }
+                ]
+            )
+            
+            instance_ids = []
+            for reservation in response['Reservations']:
+                for instance in reservation['Instances']:
+                    instance_ids.append(instance['InstanceId'])
+            
+            if not instance_ids:
+                raise Exception("No instances found with the specified tags.")
 
-if ($stopwatch.Elapsed -ge $timeout) {
-    throw "Failed to join domain '$domainName' within 5 minutes."
-}
+            return {'InstanceIds': instance_ids}
+    outputs:
+      - Name: "foundInstanceIds"
+        Selector: "$.Payload.InstanceIds"
+        Type: "StringList"
+
+  - name: "waitForInstancesRunning"
+    action: "aws:waitForAwsResourceProperty"
+    inputs:
+      Service: "ec2"
+      Api: "DescribeInstanceStatus"
+      InstanceIds: "{{ findInstances.foundInstanceIds }}"
+      PropertySelector: "$.InstanceStatuses..InstanceState.Name"
+      DesiredValues:
+        - "running"
+    isEnd: true
+
