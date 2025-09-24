@@ -1,53 +1,30 @@
----
-description: "Find tagged EC2 instances and wait for them to be running."
-schemaVersion: "0.3"
-mainSteps:
-  - name: "findInstances"
-    action: "aws:executeScript"
-    inputs:
-      Runtime: "python3.11"
-      Handler: "script_handler"
-      Script: |
-        import boto3
-
-        def script_handler(events, context):
-            ec2 = boto3.client('ec2')
-            
-            response = ec2.describe_instances(
-                Filters=[
-                    {
-                        'Name': 'tag:BuildProfile',
-                        'Values': ['DomainController']
-                    },
-                    {
-                        'Name': 'tag:Scenario',
-                        'Values': ['test']
-                    }
-                ]
-            )
-            
-            instance_ids = []
-            for reservation in response['Reservations']:
-                for instance in reservation['Instances']:
-                    instance_ids.append(instance['InstanceId'])
-            
-            if not instance_ids:
-                raise Exception("No instances found with the specified tags.")
-
-            return {'InstanceIds': instance_ids}
-    outputs:
-      - Name: "foundInstanceIds"
-        Selector: "$.Payload.InstanceIds"
-        Type: "StringList"
-
-  - name: "waitForInstancesRunning"
-    action: "aws:waitForAwsResourceProperty"
-    inputs:
-      Service: "ec2"
-      Api: "DescribeInstanceStatus"
-      InstanceIds: "{{ findInstances.foundInstanceIds }}"
-      PropertySelector: "$.InstanceStatuses..InstanceState.Name"
-      DesiredValues:
-        - "running"
-    isEnd: true
-
+# First, remove the specific Terraform file to remove its resources
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                print(f"Terraform file {filename} removed")
+            else:
+                print(f"Terraform file {filename} not found")
+                deployment_status[filename] = 'File not found'
+                return
+        except Exception as e:
+            print(f"Error removing Terraform file {filename}: {e}")
+            deployment_status[filename] = f'Error removing file: {str(e)}'
+            return
+        
+        # Run terraform plan to see what changes (should show resources to be destroyed)
+        plan_result = subprocess.run(
+            ['/usr/local/bin/terraform', 'plan'],
+            cwd=terraform_dir,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if plan_result.returncode != 0:
+            deployment_status[filename] = f'Plan failed: {plan_result.stderr}'
+            return
+        
+        # Run terraform apply to apply the changes (destroy the resources)
+        apply_result = subprocess.run(
+            ['/usr/local/bin/terraform', 'apply', '-auto-approve'],
