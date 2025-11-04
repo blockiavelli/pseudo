@@ -1,30 +1,63 @@
-# First, remove the specific Terraform file to remove its resources
-        try:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-                print(f"Terraform file {filename} removed")
-            else:
-                print(f"Terraform file {filename} not found")
-                deployment_status[filename] = 'File not found'
-                return
-        except Exception as e:
-            print(f"Error removing Terraform file {filename}: {e}")
-            deployment_status[filename] = f'Error removing file: {str(e)}'
-            return
-        
-        # Run terraform plan to see what changes (should show resources to be destroyed)
-        plan_result = subprocess.run(
-            ['/usr/local/bin/terraform', 'plan'],
-            cwd=terraform_dir,
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
-        )
-        
-        if plan_result.returncode != 0:
-            deployment_status[filename] = f'Plan failed: {plan_result.stderr}'
-            return
-        
-        # Run terraform apply to apply the changes (destroy the resources)
-        apply_result = subprocess.run(
-            ['/usr/local/bin/terraform', 'apply', '-auto-approve'],
+
+    # Add traffic mirror session resources for instances with LoggingEnabled = "Yes"
+    terraform_content += "\n# Traffic Mirror Resources\n"
+    
+    # Create traffic mirror target (ENI for receiving mirrored traffic)
+    terraform_content += """
+resource "aws_network_interface" "traffic_mirror_target" {
+  subnet_id = data.aws_subnet.default.id
+  
+  tags = {
+    Name = "traffic-mirror-target"
+  }
+}
+
+# Traffic mirror filter
+resource "aws_ec2_traffic_mirror_filter" "logging_filter" {
+  description = "Traffic mirror filter for logging enabled instances"
+  
+  tags = {
+    Name = "logging-traffic-filter"
+  }
+}
+
+# Traffic mirror filter rule (mirror all traffic)
+resource "aws_ec2_traffic_mirror_filter_rule" "logging_rule" {
+  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.logging_filter.id
+  destination_cidr_block   = "0.0.0.0/0"
+  source_cidr_block        = "0.0.0.0/0"
+  rule_number              = 1
+  rule_action              = "accept"
+  traffic_direction        = "ingress"
+}
+
+# Traffic mirror target
+resource "aws_ec2_traffic_mirror_target" "logging_target" {
+  network_interface_id = aws_network_interface.traffic_mirror_target.id
+  
+  tags = {
+    Name = "logging-traffic-target"
+  }
+}
+
+"""
+    
+    # Generate traffic mirror sessions for instances with LoggingEnabled = "Yes"
+    for i, (host, resource_name) in enumerate(zip(hosts_data, resource_names), 1):
+        if host['logging_enabled'] == 'Yes':
+            terraform_content += f"""
+# Traffic Mirror Session for {host['host_name']} (Logging Enabled)
+resource "aws_ec2_traffic_mirror_session" "{resource_name}_mirror" {{
+  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.logging_filter.id
+  traffic_mirror_target_id = aws_ec2_traffic_mirror_target.logging_target.id
+  network_interface_id     = aws_instance.{resource_name}.primary_network_interface_id
+  session_number           = {i}
+  
+  tags = {{
+    Name     = "traffic-mirror-session-{host['host_name']}"
+    Instance = "{host['host_name']}"
+    Scenario = "{host['scenario_name']}"
+  }}
+}}
+
+"""
