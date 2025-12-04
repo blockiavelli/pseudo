@@ -1,32 +1,56 @@
-<div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="num_hosts" name="num_hosts" onchange="generateHostSections()" style="flex: 1;">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="7">7</option>
-                        <option value="8">8</option>
-                        <option value="9">9</option>
-                        <option value="10">10</option>
-                    </select>
-                    <button type="button" class="btn btn-show-ips" id="show-available-ips-btn" style="padding: 10px 20px; white-space: nowrap;">Show Available IPs</button>
-                </div>
-
-
-
-
-<!-- Modal for Available IPs -->
-    <div id="ips-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Available IPs in SampleSubnet</h2>
-                <button class="close-modal" onclick="closeIpsModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="ips-count" id="ips-count">Loading...</div>
-                <div class="ips-list" id="ips-list">Loading IP addresses...</div>
-            </div>
-        </div>
-    </div>
+// Show Available IPs
+        function showAvailableIPs() {
+            const modal = document.getElementById('ips-modal');
+            const ipsList = document.getElementById('ips-list');
+            const ipsCount = document.getElementById('ips-count');
+            
+            // Show modal and show loading state
+            modal.style.display = 'block';
+            ipsList.textContent = 'Loading IP addresses...';
+            ipsCount.textContent = 'Loading...';
+            
+            // Fetch available IPs
+            fetch('/api/available-ips')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        ipsList.textContent = `Error: ${data.error}`;
+                        ipsCount.textContent = 'Error occurred';
+                    } else {
+                        const ips = data.ips || [];
+                        ipsCount.textContent = `Total available IPs: ${data.count || ips.length}`;
+                        if (ips.length > 0) {
+                            ipsList.textContent = ips.join('\n');
+                        } else {
+                            ipsList.textContent = 'No available IP addresses found.';
+                        }
+                    }
+                })
+                .catch(error => {
+                    ipsList.textContent = `Error: ${error.message}`;
+                    ipsCount.textContent = 'Error occurred';
+                });
+        }
+        
+        // Close IPs Modal
+        function closeIpsModal() {
+            const modal = document.getElementById('ips-modal');
+            modal.style.display = 'none';
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('ips-modal');
+            if (event.target === modal) {
+                closeIpsModal();
+            }
+        }
+        
+        // Add click handler to Show Available IPs button
+        document.addEventListener('DOMContentLoaded', function() {
+            const showIpsBtn = document.getElementById('show-available-ips-btn');
+            if (showIpsBtn) {
+                showIpsBtn.addEventListener('click', showAvailableIPs);
+            }
+        });
+        
