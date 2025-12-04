@@ -1,105 +1,32 @@
-.btn-show-ips {
-            background-color: #007bff;
-            color: white;
-        }
-        
-        .btn-show-ips:hover {
-            background-color: #0056b3;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #333;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 5px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-        }
-        
-        .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 600px;
-            max-height: 70vh;
-            overflow-y: auto;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-        
-        .modal-header h2 {
-            margin: 0;
-            color: #333;
-        }
-        
-        .close-modal {
-            color: #aaa;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            background: none;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            line-height: 30px;
-        }
-        
-        .close-modal:hover,
-        .close-modal:focus {
-            color: #000;
-        }
-        
-        .modal-body {
-            margin-bottom: 20px;
-        }
-        
-        .ips-list {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.8;
-            white-space: pre-wrap;
-        }
-        
-        .ips-count {
-            margin-bottom: 10px;
-            color: #666;
-            font-weight: bold;
-        }
+<div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="num_hosts" name="num_hosts" onchange="generateHostSections()" style="flex: 1;">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                    <button type="button" class="btn btn-show-ips" id="show-available-ips-btn" style="padding: 10px 20px; white-space: nowrap;">Show Available IPs</button>
+                </div>
+
+
+
+
+<!-- Modal for Available IPs -->
+    <div id="ips-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Available IPs in SampleSubnet</h2>
+                <button class="close-modal" onclick="closeIpsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ips-count" id="ips-count">Loading...</div>
+                <div class="ips-list" id="ips-list">Loading IP addresses...</div>
+            </div>
+        </div>
+    </div>
