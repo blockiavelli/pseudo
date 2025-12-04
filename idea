@@ -1,63 +1,105 @@
-
-    # Add traffic mirror session resources for instances with LoggingEnabled = "Yes"
-    terraform_content += "\n# Traffic Mirror Resources\n"
-    
-    # Create traffic mirror target (ENI for receiving mirrored traffic)
-    terraform_content += """
-resource "aws_network_interface" "traffic_mirror_target" {
-  subnet_id = data.aws_subnet.default.id
-  
-  tags = {
-    Name = "traffic-mirror-target"
-  }
-}
-
-# Traffic mirror filter
-resource "aws_ec2_traffic_mirror_filter" "logging_filter" {
-  description = "Traffic mirror filter for logging enabled instances"
-  
-  tags = {
-    Name = "logging-traffic-filter"
-  }
-}
-
-# Traffic mirror filter rule (mirror all traffic)
-resource "aws_ec2_traffic_mirror_filter_rule" "logging_rule" {
-  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.logging_filter.id
-  destination_cidr_block   = "0.0.0.0/0"
-  source_cidr_block        = "0.0.0.0/0"
-  rule_number              = 1
-  rule_action              = "accept"
-  traffic_direction        = "ingress"
-}
-
-# Traffic mirror target
-resource "aws_ec2_traffic_mirror_target" "logging_target" {
-  network_interface_id = aws_network_interface.traffic_mirror_target.id
-  
-  tags = {
-    Name = "logging-traffic-target"
-  }
-}
-
-"""
-    
-    # Generate traffic mirror sessions for instances with LoggingEnabled = "Yes"
-    for i, (host, resource_name) in enumerate(zip(hosts_data, resource_names), 1):
-        if host['logging_enabled'] == 'Yes':
-            terraform_content += f"""
-# Traffic Mirror Session for {host['host_name']} (Logging Enabled)
-resource "aws_ec2_traffic_mirror_session" "{resource_name}_mirror" {{
-  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.logging_filter.id
-  traffic_mirror_target_id = aws_ec2_traffic_mirror_target.logging_target.id
-  network_interface_id     = aws_instance.{resource_name}.primary_network_interface_id
-  session_number           = {i}
-  
-  tags = {{
-    Name     = "traffic-mirror-session-{host['host_name']}"
-    Instance = "{host['host_name']}"
-    Scenario = "{host['scenario_name']}"
-  }}
-}}
-
-"""
+.btn-show-ips {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-show-ips:hover {
+            background-color: #0056b3;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 5px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 70vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .close-modal {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+        }
+        
+        .close-modal:hover,
+        .close-modal:focus {
+            color: #000;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .ips-list {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        
+        .ips-count {
+            margin-bottom: 10px;
+            color: #666;
+            font-weight: bold;
+        }
